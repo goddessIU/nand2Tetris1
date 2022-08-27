@@ -42,5 +42,24 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
+    Not16(in=x, out=notx);
+    Not16(in=y, out=noty);
+    And16(a=x, b=notx, out=c0);
+    Not16(in=c0, out=notc0);
+    Mux4Way16(a=x, b=c0, c=notx, d=notc0, sel[0]=zx, sel[1]=nx, out=ox);
+    Mux4Way16(a=y, b=c0, c=noty, d=notc0, sel[0]=zy, sel[1]=ny, out=oy);
+    And16(a=ox, b=oy, out=oxandoy);
+    Add16(a=ox, b=oy, out=oxaddoy);
+    Mux16(a=oxandoy, b=oxaddoy, sel=f, out=fxy);
+    Not16(in=fxy, out=nfxy);
+    Mux16(a=fxy, b=nfxy, sel=no, out=of);
+    And16(a=of, b[0..15]=true, out[0..7]=o1, out[8..15]=o2);
+    Or8Way(in=o1, out=oo1);
+    Or8Way(in=o2, out=oo2);
+    Not(in=oo1, out=no1);
+    Not(in=oo2, out=no2);
+    And(a=no1, b=no2, out=zr);
+    And16(a=of, b[0..15]=true, out[0..14]=d, out[15]=o15);
+    And(a=o15, b=true, out=ng);
+    And16(a=of, b[0..15]=true, out=out);
 }
