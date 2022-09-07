@@ -32,12 +32,45 @@ CHIP CPU {
         reset;           // Signals whether to re-start the current
                          // program (reset==1) or continue executing
                          // the current program (reset==0).
-
+ 
     OUT outM[16],        // M value output
         writeM,          // Write to M? 
         addressM[15],    // Address in data memory (of M)
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    Mux16(a = instruction, b = ALUout, sel = instruction[15], out = inA); 
+    //在d1=1 或是为A指令时存进A寄存器
+    Not(in = instruction[15], out = isA);
+    And(a = instruction[15], b = instruction[5], out = CloadA);
+    Or(a = isA, b = CloadA, out = loadA);
+    ARegister(in = inA, load = loadA, out = outA, out[0..14] = addressM, out = pcin);
+    //在d2=1 且为C指令时存进D
+    And(a = instruction[15], b = instruction[4], out = loadD);
+    DRegister(in = ALUout, load = loadD, out = outD);
+    //在d3=1 且为C指令时存进M(打上writeM标记即可)，通知Memory把M修改为outM的值
+    And(a = instruction[15], b = instruction[3], out = writeM);
+    //在为C指令时判断将A输入ALU还是将M输入ALU，否则A指令直接输出outA至ALU outM = RAM[A] 
+    And(a = instruction[12], b = instruction[15], out = sel1);
+    Mux16(a = outA, b = inM, sel = sel1, out = ALUin);  //将A或M输入ALU
+    And(a = instruction[15], b = instruction[11], out = zx);
+    And(a = instruction[15], b = instruction[10], out = nx);
+    And(a = instruction[15], b = instruction[9], out = zy);
+    And(a = instruction[15], b = instruction[8], out = ny);
+    And(a = instruction[15], b = instruction[7], out = f);
+    And(a = instruction[15], b = instruction[6], out = no);
+    ALU(x = outD, y = ALUin, zx = zx, nx = nx, zy = zy, ny = ny, f = f, no = no, out = ALUout, out = outM, zr = zr, ng = ng);
+    //ALU的结果即为C指令中的COMP， A指令时输出的是outA&ALUin
+    And(a = ng, b = instruction[2], out = t1);  // < 0
+    And(a = zr, b = instruction[1], out = t2);  // = 0
+    Or(a = ng, b = zr, out = ngz);  
+    Not(in = ngz, out = pos);   
+    And(a = pos, b = instruction[0], out = t3);  // > 0
+    Or(a = t1, b = t2, out = tt1);             
+    Or(a = tt1, b = t3, out = tt);
+    And(a = instruction[15], b = tt, out = PCload); //注意C指令才能触发jump  
+    PC(in = pcin, load = PCload, inc = true, reset = reset, out[0..14] = pc);  
+    
+
+
 }
